@@ -9,7 +9,14 @@ To run the app: `go run main.go`
 
 ### Available commands: 
 
-`signup`  `login`
+`signup`: saves a config file in local client storage and save required credentials in db
+
+`login <you_username> <receiver_username>`: log in using the config saved during signup and send to the receiver username if the user exists in db
 
 ## Screenshots
-![image](https://user-images.githubusercontent.com/40053781/172287314-47895383-6d0c-4f9b-ab39-bbbcec35f46f.png)
+![test](https://github.com/shailesz/cli-chat-golang-encrypted/assets/40053781/6f8e2250-337b-4bfc-84f7-18d707c263f0)
+> client cli
+
+![db-sc](https://github.com/shailesz/cli-chat-golang-encrypted/assets/40053781/556f337f-5cee-43a6-80c3-60a236ac930c)
+> messages encrypted in the db that require key pairs, salt and passphrase to decrypt
+
