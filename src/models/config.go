@@ -1,7 +1,8 @@
 package models
 
 import (
-	"github.com/shailesz/cli-chat-golang/src/services"
+	"encoding/json"
+	"io/ioutil"
 )
 
 // Config type for config file.
@@ -18,7 +19,16 @@ func (c *Config) Update(u, p string) Config {
 	c.Username, c.Password = u, p
 
 	// write config file.
-	services.WriteConfig(c)
+	WriteConfig(c, u)
 
 	return Config{Username: u, Password: p}
+}
+
+// WriteConfig writes config to file.
+func WriteConfig(data interface{}, u string) {
+	file, _ := json.MarshalIndent(data, "", " ")
+
+	name := u + ".json"
+
+	_ = ioutil.WriteFile(name, file, 0644)
 }

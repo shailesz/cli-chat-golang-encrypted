@@ -23,14 +23,14 @@ func initConfig() {
 }
 
 // ReadConfig reads from a config file.
-func ReadConfig() models.Config {
+func ReadConfig(name string) models.Config {
 	var jsonFile *os.File
 	var err error
 	var config models.Config
 
 	for {
 		// Open our config file
-		jsonFile, err = os.Open("config.json")
+		jsonFile, err = os.Open(name + ".json")
 		// if os.Open returns an error then handle it
 		if err != nil {
 			initConfig()

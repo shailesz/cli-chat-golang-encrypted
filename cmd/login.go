@@ -1,55 +1,32 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
 	"fmt"
 
-	"github.com/shailesz/cli-chat-golang/src/constants"
-	"github.com/shailesz/cli-chat-golang/src/controllers"
-	"github.com/shailesz/cli-chat-golang/src/helpers"
-	"github.com/shailesz/cli-chat-golang/src/models"
+	"github.com/shailesz/cli-chat-golang/src/controllers" // Assuming services package exists
 	"github.com/spf13/cobra"
 )
 
 // loginCmd represents the login command
 var loginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Use:   "login [username] [receiver]",
+	Short: "Log in to the chat application",
+	Long: `Log in to the chat application using your username and start a chat with the receiver.
+Example usage:
+	chatapp login john jane`,
+	Args: cobra.ExactArgs(2), // Ensures exactly two arguments are passed
+	Run:  loginRun,
+}
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		// read from config for persistant login
-		config := helpers.ReadConfig()
+func loginRun(cmd *cobra.Command, args []string) {
+	login, receiver := args[0], args[1]
 
-		// login from config file
-		controllers.Login(config)
-
-		// setup chatroom
-		helpers.ClearScreen()
-		helpers.WelcomeText()
-
-		// event listener for message
-		controllers.Socket.On("message", func(chat models.ChatMessage) {
-			if chat.Username != config.Username {
-				helpers.ClearLine()
-				fmt.Println(constants.PURPLE_TERMINAL_COLOR + chat.ToString() + constants.RESET_TERMINAL_COLOR)
-				helpers.Prompt()
-			}
-		})
-
-		// handle input for chatroom
-		controllers.HandleChatInput(config)
-	},
+	if err := controllers.HandleLogin(login, receiver); err != nil {
+		fmt.Println("Login error:", err)
+		return
+	}
 }
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
-
 }

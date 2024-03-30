@@ -3,79 +3,55 @@ package controllers
 import (
 	"fmt"
 
+	"github.com/shailesz/cli-chat-golang/keymanager"
 	"github.com/shailesz/cli-chat-golang/src/helpers"
 	"github.com/shailesz/cli-chat-golang/src/models"
-	"github.com/shailesz/cli-chat-golang/src/services"
+	"github.com/shailesz/cli-chat-golang/src/socket"
 )
 
 // CreateUser creates a user.
 func CreateUser(e, u, p string) {
 	var waitResponse bool = true
 
-	user := models.User{Email: e, Username: u, Password: p}
+	privateKey, publicKeyHex, err := keymanager.GenerateECDSAKeys()
+	if err != nil {
+		fmt.Println("Failed to generate keys:", err)
+		return
+	}
 
-	Socket.On("signup", func(res models.AuthMessage) {
+	passphrase := helpers.Sha256(p) // Example: using a hash of the password as the encryption passphrase
+	encryptedPrivateKey, err := keymanager.EncryptPrivateKey(privateKey, passphrase)
+	if err != nil {
+		fmt.Println("Failed to encrypt private key:", err)
+		return
+	}
+
+	user := models.User{Email: e, Username: u, Password: passphrase, PublicKey: publicKeyHex}
+
+	// Save user configuration including the encrypted private key
+	config := models.Config{
+		Email:               e,
+		Username:            u,
+		Password:            passphrase,
+		PublicKey:           publicKeyHex,
+		EncryptedPrivateKey: encryptedPrivateKey,
+		PrivateKey:          privateKey.D.Bytes(),
+	}
+	models.WriteConfig(config, u)
+
+	// Emit signup event with user data (excluding the private key)
+	socket.Socket.Emit("signup", user)
+
+	socket.Socket.On("signup", func(res models.AuthMessage) {
 		if res.Status == 200 {
-			fmt.Println("Successfully signed up, please continue to login.")
-			services.WriteConfig(user)
-		} else if res.Status == 409 {
-			fmt.Println("email/username combination already exists! Please try again.")
+			fmt.Println("Successfully signed up, please continue to login.", passphrase)
 		} else {
-			fmt.Println("Something went wrong! Please try again.")
+			// Handle different statuses
 		}
 		waitResponse = false
 	})
 
-	Socket.Emit("signup", user)
-
-	for {
-		if !waitResponse {
-			break
-		}
+	for waitResponse {
+		// Block until response is received
 	}
-}
-
-// Login logs in user from config file.
-func Login(c models.Config) (string, string) {
-	var isWaiting, isUpdate bool
-	var u, p string
-
-	// handle configs from config file
-	if c.Username == "" || c.Password == "" {
-		_, u, p = helpers.GetCredentials(false)
-
-		isUpdate = true
-
-	} else {
-		fmt.Println("Processing...")
-		u, p = c.Username, c.Password
-		isUpdate = false
-	}
-
-	// listener for auth messages.
-	Socket.On("auth", func(message models.AuthMessage) {
-		if message.Status == 404 {
-			fmt.Println("You could not be authenticated. please try again.")
-		} else {
-			fmt.Println("Authenticated.")
-
-			if isUpdate {
-				c.Update(u, p)
-			}
-		}
-
-		isWaiting = false
-	})
-
-	isWaiting = true
-	Socket.Emit("auth", models.User{Username: u, Password: p}) // send auth message to server
-
-	// wait for auth message.
-	for {
-		if !isWaiting {
-			break
-		}
-	}
-
-	return u, p
 }

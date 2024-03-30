@@ -1,31 +1,30 @@
 package controllers
 
 import (
-	"bufio"
-	"os"
-	"time"
+	"fmt"
 
+	"github.com/shailesz/cli-chat-golang/cryptoutils"
 	"github.com/shailesz/cli-chat-golang/src/helpers"
 	"github.com/shailesz/cli-chat-golang/src/models"
+	"github.com/shailesz/cli-chat-golang/src/services"
+	"github.com/shailesz/cli-chat-golang/src/socket"
 )
 
-// HandleChatInput sends scanned input from to server.
-func HandleChatInput(config models.Config) {
-	reader := bufio.NewReader(os.Stdin)
+func setupChatroom(sharedSecret []byte, config models.Config) {
+	helpers.ClearScreen()
+	helpers.WelcomeText()
 
-	// prompt
-	for {
-		helpers.Prompt()
-		data, _, _ := reader.ReadLine()
-		message := string(data)
-		SendChat(config.Username, message)
-		if message == "$quit" {
-			break
+	// event listener for message
+	socket.Socket.On("message", func(chat models.ChatMessage) {
+		message, err := cryptoutils.DecryptMessageAES(sharedSecret, chat)
+		if err != nil {
+			fmt.Println("Failed to decrypt message:", err)
+			return
 		}
-	}
-}
 
-// SendChat emits chat event to server.
-func SendChat(u, m string) {
-	Socket.Emit("chat", models.ChatMessage{Username: u, Data: m, Timestamp: time.Now().UnixNano()})
+		services.DisplayMessage(chat.Username, message.ToString(), config.Username)
+	})
+
+	// handle input for chatroom
+	services.HandleChatInput(config, sharedSecret)
 }
